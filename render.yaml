@@ -1,0 +1,19 @@
+# TurnitOut on Render's free tier.
+# NOTE: free instances have ephemeral disks — the database resets on redeploy/restart.
+# For persistent data, use the Docker/VPS path in DEPLOY.md or add a paid disk.
+services:
+  - type: web
+    name: turnitout
+    runtime: python
+    plan: free
+    buildCommand: "python -m compileall -q app"
+    startCommand: "python run.py --host 0.0.0.0"
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.7"
+      - key: TURNITOUT_DEMO
+        value: "0"
+      - key: TURNITOUT_TRUST_PROXY
+        value: "1"
+      - key: GPTZERO_API_KEY
+        sync: false
