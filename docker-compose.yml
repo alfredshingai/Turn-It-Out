@@ -5,7 +5,6 @@ services:
     environment:
       # Production defaults; override in .env (see .env.example)
       - TURNITOUT_DEMO=${TURNITOUT_DEMO:-0}
-      - TURNITOUT_TRUST_PROXY=1
       - GPTZERO_API_KEY=${GPTZERO_API_KEY:-}
     volumes:
       - turnitout_data:/app/data

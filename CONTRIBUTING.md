@@ -20,8 +20,8 @@ This keeps the project coherent and avoids duplicated effort.
 - **Detection accuracy**: calibration harness, ensemble scoring with agreement confidence,
   richer stylometry, better bypasser fingerprints.
 - **Engine scale**: precomputed k-gram index so scans stay fast on large corpora.
-- **Turnitin-parity features**: quote/bibliography exclusion, Quick Submit, instructor
-  annotations, PDF/CSV exports.
+- **Turnitin-parity features**: quote/bibliography exclusion, report annotations,
+  PDF/CSV exports.
 - **Localization**: the UI is English-only today; more languages welcome.
 - **Documentation**: deployment guides for more platforms, screenshots, tutorials.
 
@@ -29,7 +29,7 @@ This keeps the project coherent and avoids duplicated effort.
 
 - Anything that evades the checks this app performs (humanizers, bypass tools). The
   bypasser *fingerprint* exists to expose spun text, not to perfect it.
-- Features that send student data to third parties without an explicit, documented opt-in.
+- Features that send user text to third parties without an explicit, documented opt-in.
 - Dependency-heavy rewrites — the stdlib-only Python core is a deliberate design choice.
 
 ## Ground rules

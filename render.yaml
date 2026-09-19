@@ -13,7 +13,5 @@ services:
         value: "3.13.7"
       - key: TURNITOUT_DEMO
         value: "0"
-      - key: TURNITOUT_TRUST_PROXY
-        value: "1"
       - key: GPTZERO_API_KEY
         sync: false
