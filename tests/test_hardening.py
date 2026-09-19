@@ -1,9 +1,9 @@
-"""Tests for production hardening: rate limits, proxy-aware client IPs, scan recovery."""
+"""Tests for hardening features in the anonymous model: rate limits,
+proxy-aware client IPs, and stale scan recovery on documents."""
 import os
 import sys
 import tempfile
 import unittest
-from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -23,7 +23,6 @@ class FakeHandler:
 
 class TestClientIp(unittest.TestCase):
     def test_public_peer_ignores_xff(self):
-        # 93.184.216.34 is globally routable (not a documentation/reserved range).
         h = FakeHandler("93.184.216.34", xff="1.2.3.4")
         self.assertEqual(server._client_ip(h), "93.184.216.34")
 
@@ -38,7 +37,7 @@ class TestClientIp(unittest.TestCase):
 
 class TestRateLimiter(unittest.TestCase):
     def test_allows_under_limit_blocks_over(self):
-        key = ("test-ip", "POST", "/api/login")
+        key = ("test-ip", "POST", "/api/scan")
         server._rate_buckets.pop(key, None)
         limit, window = 3, 60
         for _ in range(limit):
@@ -46,12 +45,11 @@ class TestRateLimiter(unittest.TestCase):
         self.assertFalse(server._rate_limit(key, limit, window))
 
     def test_old_entries_expire(self):
-        key = ("test-ip2", "POST", "/api/login")
+        key = ("test-ip2", "POST", "/api/scan")
         server._rate_buckets.pop(key, None)
         limit, window = 1, 60
         self.assertTrue(server._rate_limit(key, limit, window))
         self.assertFalse(server._rate_limit(key, limit, window))
-        # Simulate the window passing by backdating the stored timestamp.
         server._rate_buckets[key][0] -= window + 1
         self.assertTrue(server._rate_limit(key, limit, window))
 
@@ -64,14 +62,6 @@ class TestScanRecovery(unittest.TestCase):
         os.unlink(tmp)
         db.DB_PATH = tmp
         db.init_db()
-        # Real FK chain: user -> class -> assignment -> submissions.
-        uid = db.execute(
-            "INSERT INTO users (email, name, role, password_hash, created_at) VALUES ('t@t.t','T','instructor','x',0)")
-        cid = db.execute(
-            "INSERT INTO classes (name, code, instructor_id, created_at) VALUES ('C','C1',?,0)", (uid,))
-        self.aid = db.execute(
-            "INSERT INTO assignments (class_id, title, created_at) VALUES (?, 'A', 0)", (cid,))
-        self.sid_user = uid
 
     def tearDown(self):
         db.DB_PATH = self._old_path
@@ -79,15 +69,20 @@ class TestScanRecovery(unittest.TestCase):
     def test_stuck_scans_marked_failed(self):
         for status in ("processing", "queued", "done"):
             db.execute(
-                """INSERT INTO submissions
-                   (assignment_id, student_id, filename, ext, text, char_count, word_count,
-                    status, created_at) VALUES (?, ?, 'f.txt', 'txt', 'x', 1, 1, ?, 0)""",
-                (self.aid, self.sid_user, status),
+                """INSERT INTO documents
+                   (token, text, char_count, word_count, status, created_at)
+                   VALUES (?, 'x', 1, 1, ?, 0)""",
+                (db.new_token(), status),
             )
         n = db.recover_stale_scans()
-        rows = db.query("SELECT status FROM submissions WHERE status = 'error'")
+        rows = db.query("SELECT status FROM documents WHERE status = 'error'")
         self.assertEqual(len(rows), n)
         self.assertEqual(n, 2)  # only processing + queued
+
+    def test_tokens_are_unguessable_and_unique(self):
+        tokens = {db.new_token() for _ in range(1000)}
+        self.assertEqual(len(tokens), 1000)
+        self.assertTrue(all(len(t) >= 20 for t in tokens))
 
 
 if __name__ == "__main__":

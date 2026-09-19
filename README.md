@@ -1,11 +1,11 @@
 # 🔍 TurnitOut
 
-A Turnitin-style **similarity + AI-writing checker** for classes and assignments — built entirely on the **Python standard library** (no dependencies to install).
+Free, anonymous **similarity + AI-writing checks** for any text — essays, articles, reports, letters, anything written. No account, no signup, no email. Paste text or upload a file, get a report at a private link.
 
-> **Free & open source.** TurnitOut is and will remain a free, open-source platform for
-> educators and students. No subscriptions, no per-document fees, no vendor lock-in.
-> If it saves you money compared to commercial suites, consider [contributing](CONTRIBUTING.md)
-> code, docs, translations, or test data instead.
+> **Free & open source.** TurnitOut is and will remain a free, open-source platform.
+> No subscriptions, no per-document fees, no vendor lock-in. If it saves you money
+> compared to commercial suites, consider [contributing](CONTRIBUTING.md) code, docs,
+> translations, or test data instead.
 >
 > **🤝 Call for contributions & collaborations.** Detection engines, calibration data,
 > translations, deployment guides — if you can add value, it belongs here. Contribution
@@ -13,26 +13,53 @@ A Turnitin-style **similarity + AI-writing checker** for classes and assignments
 
 **How it works** — [Quick start](#run-it) · [Deployment](DEPLOY.md) · [Contributing](CONTRIBUTING.md)
 
-## Features
+## How it works
 
-- **Instructor & student accounts** with cookie sessions (scrypt-hashed passwords)
-- **Classes** with join codes, rosters, and assignments
-- **Document upload** (.txt, .md, .docx, .pdf — text-based) with automatic scanning
-- **Turnitin-style similarity reports**: overall %, per-source %, and exact passage highlighting in the document
-- **Database corpus**: every submission is checked against all other submissions in the app
-- **Web check**: distinctive phrases are searched on the web (DuckDuckGo); matching snippets become web sources in the report. Works offline too — web sources are simply absent.
-- **AI-writing detection**: every scan also estimates the likelihood the text was machine-generated, with sentence-level highlighting on the report's "AI writing" tab
-- **Rescan** any submission on demand
+1. **Paste or upload** — any text (20–30,000 words) or a .txt / .md / .docx / .pdf file.
+2. **The engine checks it** against:
+   - the **shared anonymized corpus** of every past scan (sources shown only as "Document #N" — never filenames or text),
+   - the **live web** via distinctive-phrase search,
+   - **AI-writing patterns** (perplexity under a real language model when LM Studio is running, plus burstiness, style signals, and a bypasser fingerprint).
+3. **Read the report** at a private link — similarity % with exact passage highlighting, AI-writing likelihood with flagged sentences. The link is the only key: unguessable, shareable, expiring only when you delete the data.
+
+**No accounts.** A scan creates a document addressed by a 128-bit random token. Whoever holds the token can read that report; nobody can browse anyone else's. Optional per-scan checkbox: include your text in the shared corpus (on by default — every scan makes the tool smarter for everyone) or keep it fully private. Either way it is still checked *against* the corpus.
+
+## Run it
+
+```
+python run.py            # http://127.0.0.1:8333
+python run.py --lan      # reachable from other devices on your network
+python run.py 9000       # custom port
+```
+
+Zero dependencies — the Python standard library is the whole stack. On first run a demo
+document is seeded and its link printed in the console, so you can see a finished report
+immediately. Delete `data/turnitout.db` to reset. Set `TURNITOUT_DEMO=0` to skip seeding.
+
+Deployment options (LAN, Docker + automatic HTTPS, Render free tier): see [DEPLOY.md](DEPLOY.md).
+
+## The similarity engine
+
+Turnitin-style fingerprinting:
+
+1. Text is normalized (case, punctuation, quotes) and tokenized to words.
+2. 6-word **fingerprints** (k-grams) are matched against every corpus source and the web.
+3. Seed matches are greedily extended into maximal matching spans.
+4. Tiny, generic overlaps (mostly stopwords, <5 words) are filtered out.
+5. **Score** = matched words ÷ document words, with per-source percentages and highlighted passages.
 
 ## AI-writing detection
 
-Modeled on how Turnitin's AI detector works (per their published documentation):
+Modeled on Turnitin's published methodology:
 
-- **Qualifying text only** — analysis runs on prose sentences in long-form writing. Bullets, tables, code, headings, citations and short fragments are excluded, exactly like Turnitin's "qualifying text" rule.
-- **300-word prose minimum** — Turnitin's threshold for reliable analysis; shorter documents report `insufficient_text` instead of a guess.
-- **The asterisk rule** — scores between 1–19% display as `*%` ("no reliable AI signal") because that range has the highest false-positive risk. Same policy Turnitin applies.
-- **Sentence-level highlighting** — qualifying sentences scoring ≥50% are highlighted on the AI tab.
-- **Bypasser fingerprinting** — text showing the signature of AI-generation followed by an AI-paraphrasing tool (synonym-swapped, connective-dense, uniformly rhythmic) is classified separately as *"Likely AI-generated + AI-paraphrased"*.
+- **Qualifying text only** — prose sentences in long-form writing; bullets, tables, code,
+  headings, citations and fragments excluded.
+- **300-word prose minimum** for reliable analysis; shorter text returns `insufficient_text`.
+- **The asterisk rule** — scores between 1–19% display as `*%` because that range has the
+  highest false-positive risk (same policy Turnitin applies).
+- **Sentence-level highlighting** of passages scoring ≥50%.
+- **Bypasser fingerprinting** — text showing the signature of AI-generation followed by an
+  AI-paraphrasing tool is classified separately as *"Likely AI-generated + AI-paraphrased"*.
 
 ### Provider tiers (priority order, each fails softly to the next)
 
@@ -43,66 +70,38 @@ Modeled on how Turnitin's AI detector works (per their published documentation):
    GPTZERO_API_KEY=your-key-here
    ```
 
-   Get a key at gptzero.me (paid API; per-document pricing). Sends text to a third party.
+   Get a key at gptzero.me (paid API). Sends text to a third party.
 
 2. **LM Studio local model scoring** — *real* model-based detection, 100% local and free.
-   If you have [LM Studio](https://lmstudio.ai) installed: open the **Developer** tab,
-   load a small instruct model (e.g. Llama 3.2 3B or Qwen 2.5 3B), click **Start Server**,
-   and TurnitOut auto-detects it. Scoring runs the text through the model and measures
-   **perplexity** (how predictable the text is — AI text is highly predictable); with two
-   models loaded it adds a **cross-model ratio** (Binoculars-inspired, ICLR 2024), which is
-   state-of-the-art zero-shot detection. Paragraph-level highlighting included. No data
-   ever leaves the machine. Tune with `LMSTUDIO_URL`, `LMSTUDIO_EXPERT`, `LMSTUDIO_BASE`.
+   Install [LM Studio](https://lmstudio.ai), open the **Developer** tab, load a small model,
+   click **Start Server** — TurnitOut auto-detects it and scores your text's **perplexity**
+   (AI text is highly predictable). With two models loaded it adds a **cross-model ratio**
+   (Binoculars-inspired, ICLR 2024). No data leaves the machine.
 
 3. **Local heuristics** — the always-available fallback: burstiness (sentence-length
    variance), contraction/hedge/first-person rates, vocabulary predictability, and the
-   bypasser fingerprint. Transparent and explainable, but the weakest signal of the three.
+   bypasser fingerprint. Transparent and explainable, but the weakest signal.
 
 ### Known limitations (all detectors, including Turnitin's)
 
-- Human writing **can** be flagged (false positives): formal, repetitive, highly-structured, or non-native-English writing resembles AI patterns.
+- Human writing **can** be flagged (false positives): formal, repetitive, highly-structured,
+  or non-native-English writing resembles AI patterns.
 - AI writing **can** evade detection (false negatives), especially after light editing.
 - Short submissions are unreliable — hence the 300-word minimum and the `*%` band.
-- A score is a **conversation starter, not a verdict**: review drafts, version history, notes, and the student's ability to explain their work before drawing conclusions. Turnitin says the same about its own reports.
+- A score is a **conversation starter, not a verdict**: consider drafts, version history,
+  and the author's ability to explain the work before drawing conclusions.
 
 ### What this app deliberately does not include
 
-No "AI humanizer" / bypass mode. The app's purpose is integrity checking; a tool whose purpose is evading such checks has no place in it. The bypasser *fingerprint* exists so flagged paraphrasing is visible to instructors, not to help it succeed.
-
-Privacy note: using GPTZero sends submission text to a third party. If that's a concern for your institution, run in heuristic mode — it keeps all data local.
-
-## How the similarity engine works
-
-1. Text is normalized (case, punctuation, quotes) and tokenized to words.
-2. 6-word **fingerprints** (k-grams) of each document are matched against every source.
-3. Seed matches are greedily extended into maximal matching spans.
-4. Tiny, generic overlaps (mostly stopwords, <5 words) are filtered out.
-5. **Score** = matched words ÷ document words. Report highlights show exactly which sentences matched which source.
-
-## Run it
-
-```
-python run.py            # http://127.0.0.1:8333
-python run.py 9000       # custom port
-```
-
-On first run the app seeds demo data:
-
-| Role | Email | Password |
-|---|---|---|
-| Instructor | `instructor@demo.edu` | `instructor123` |
-| Student | `student@demo.edu` | `student123` |
-
-The student account already has a submission (Essay 1) that copies from the built-in reference corpus — open its report to see highlighted matches immediately.
-
-## Demo flow
-
-1. Sign in as the **student**, open *ENG 101 → Essay 1*, submit a .docx/.txt and watch the scan run.
-2. Sign in as the **instructor** to see all submissions and their similarity bars.
-3. Create a class as an instructor, share the join code, join as a student.
+No "AI humanizer" / bypass mode. The app's purpose is integrity checking; a tool whose
+purpose is evading such checks has no place in it. The bypasser *fingerprint* exists so
+flagged paraphrasing is visible, not to help it succeed.
 
 ## Notes
 
-- Data lives in `data/turnitout.db` (SQLite, WAL mode). Delete the file to re-seed.
+- Data lives in `data/turnitout.db` (SQLite, WAL mode). It stays on your machine unless
+  you deploy it; the GPTZero tier is the only feature that sends text anywhere.
 - Web checking needs internet; scans always succeed without it.
-- PDF extraction is best-effort (uncompressed/Flate streams). Scanned image PDFs are rejected with a clear error.
+- PDF extraction is best-effort (uncompressed/Flate streams). Scanned image PDFs are
+  rejected with a clear error.
+- Rate limit: 10 scans/hour per IP — free for humans, hostile to scrapers.
