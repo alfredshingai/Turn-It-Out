@@ -1,0 +1,31 @@
+services:
+  turnitout:
+    build: .
+    restart: unless-stopped
+    environment:
+      # Production defaults; override in .env (see .env.example)
+      - TURNITOUT_DEMO=${TURNITOUT_DEMO:-0}
+      - TURNITOUT_TRUST_PROXY=1
+      - GPTZERO_API_KEY=${GPTZERO_API_KEY:-}
+    volumes:
+      - turnitout_data:/app/data
+    expose:
+      - "8333"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN:?Set DOMAIN in .env, e.g. turnitout.example.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  turnitout_data:
+  caddy_data:
+  caddy_config:

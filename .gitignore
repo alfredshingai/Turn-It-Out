@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Local data & secrets
+data/
+*.db
+*.db-wal
+*.db-shm
+.env
+server.log
+
+# OS / editor / agent workspaces
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.freebuff/
+
+# Tests (generated)
+tests/smoke_test.db
+tests/smoke_test.db-wal
+tests/smoke_test.db-shm
