@@ -36,8 +36,12 @@ ETHICS_NOTE = (
 # (pattern, replacement, reason). Case-preserving replacement is applied.
 CLICHE_MAP = [
     (r"\bdelve\b", "explore", "plain verb over AI-cliche 'delve'"),
+    (r"\bdelves\b", "explores", "plain verb over AI-cliche 'delves'"),
+    (r"\bdelving\b", "exploring", "plain verb over AI-cliche 'delving'"),
     (r"\btapestry\b", "mix", "plain noun over AI-cliche 'tapestry'"),
+    (r"\btapestries\b", "mixes", "plain noun over AI-cliche 'tapestries'"),
     (r"\bleverage\b", "use", "plain verb over 'leverage'"),
+    (r"\bleverages\b", "uses", "plain verb over 'leverages'"),
     (r"\butilize\b", "use", "plain verb over 'utilize'"),
     (r"\butilizes\b", "uses", "plain verb over 'utilizes'"),
     (r"\butilizing\b", "using", "plain verb over 'utilizing'"),
@@ -46,6 +50,7 @@ CLICHE_MAP = [
     (r"\bcomprehensive\b", "full", "simpler adjective"),
     (r"\brobust\b", "strong", "simpler adjective"),
     (r"\bpivotal\b", "key", "simpler adjective"),
+    (r"\bintricate\b", "detailed", "simpler adjective"),
     (r"\bmoreover\b", "also", "simpler connective, less stiff"),
     (r"\bfurthermore\b", "also", "simpler connective, less stiff"),
     (r"\badditionally\b", "also", "simpler connective, less stiff"),
@@ -64,6 +69,10 @@ CLICHE_MAP = [
     (r"\bdue to the fact that\b", "because", "trim wordy construction"),
     (r"\bin order to\b", "to", "trim wordy construction"),
     (r"\bin the event that\b", "if", "trim wordy construction"),
+    (r"\bin terms of\b", "about", "trim wordy construction"),
+    (r"\bas well as\b", "and", "tighter conjunction"),
+    (r"\bhas the ability to\b", "can", "tighter verb"),
+    (r"\bhave the ability to\b", "can", "tighter verb"),
 ]
 
 WORDY_MAP_CONCISE = [

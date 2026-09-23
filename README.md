@@ -97,6 +97,24 @@ No "AI humanizer" / bypass mode. The app's purpose is integrity checking; a tool
 purpose is evading such checks has no place in it. The bypasser *fingerprint* exists so
 flagged paraphrasing is visible, not to help it succeed.
 
+> **Boundary:** the built-in **Writing enhancer** (`POST /api/humanize`, home-page card)
+> is *not* a bypass mode. It rewrites only text you authored or have the right to edit,
+> explains every change (cliche → plain word, filler trim, tone), keeps AI-use disclosure
+> intact, and reminds you to re-check with the Similarity / AI-writing tabs. Modes:
+> `clarity` (default), `concise`, `natural`, `formal`. Offline rules always work; a local
+> LM Studio model is used only if you already run one — no text leaves your machine
+> otherwise. Rate limit: 20 enhancements/hour per IP.
+
+## Writing enhancer API
+
+```
+POST /api/humanize   {"text": "...", "mode": "clarity|concise|natural|formal"}
+# -> {"enhanced": "...", "edits": [{"type","original","suggestion","reason"}],
+#     "editCount": N, "provider": "local-rules|lmstudio",
+#     "stats": {"before": {...}, "after": {...}}, "note": "..."}
+GET  /api/health     # now also returns {"humanizeModes": [...]}
+```
+
 ## Notes
 
 - Data lives in `data/turnitout.db` (SQLite, WAL mode). It stays on your machine unless

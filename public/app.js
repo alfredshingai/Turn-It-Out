@@ -153,9 +153,15 @@ async function doHumanize() {
   try {
     const data = await API.post("/api/humanize", { text, mode });
     document.getElementById("enh-result").value = data.enhanced;
+    const st = data.stats || {};
+    const before = st.before || {}, after = st.after || {};
     document.getElementById("enh-meta").textContent =
       `${data.editCount} suggestion${data.editCount === 1 ? "" : "s"} · ` +
-      `via ${data.provider === "lmstudio" ? "local LM Studio" : "offline rules"} · mode: ${data.mode}`;
+      `via ${data.provider === "lmstudio" ? "local LM Studio" : "offline rules"} · mode: ${data.mode}` +
+      (before.avgSentenceWords !== undefined
+        ? ` · avg sentence ${before.avgSentenceWords}→${after.avgSentenceWords}w` : "") +
+      (before.stiffConnectives !== undefined
+        ? ` · stiff connectives ${before.stiffConnectives}→${after.stiffConnectives}` : "");
     document.getElementById("enh-edits").innerHTML =
       (data.edits || []).slice(0, 12).map(e =>
         `<span class="metric-chip"><b>${esc(e.type)}</b> ${esc(e.original)} → ${esc(e.suggestion)}</span>`

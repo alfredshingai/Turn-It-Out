@@ -176,7 +176,8 @@ def h_recent(ctx):
 
 def h_health(ctx):
     db.query_one("SELECT 1 AS ok")
-    return 200, {"ok": True, "time": db.now(), "aiMode": aidetect.provider_status()["mode"]}
+    return 200, {"ok": True, "time": db.now(), "aiMode": aidetect.provider_status()["mode"],
+                 "humanizeModes": list(humanize.MODES)}
 
 
 def h_humanize(ctx):
