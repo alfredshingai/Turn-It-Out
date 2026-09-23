@@ -16,7 +16,7 @@ from email.parser import BytesParser
 from email.policy import HTTP
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import aidetect, db, extract, scanner
+from . import aidetect, db, extract, humanize, scanner
 
 log = logging.getLogger("turnitout")
 
@@ -25,6 +25,7 @@ MAX_BODY = 11 * 1024 * 1024
 
 RATE_LIMITS = {
     ("POST", "/api/scan"): (10, 3600),  # 10 scans/hour per IP — free, not abusable
+    ("POST", "/api/humanize"): (20, 3600),  # enhancer is cheap + local
 }
 _rate_lock = threading.Lock()
 _rate_buckets: dict = {}
@@ -178,6 +179,36 @@ def h_health(ctx):
     return 200, {"ok": True, "time": db.now(), "aiMode": aidetect.provider_status()["mode"]}
 
 
+def h_humanize(ctx):
+    """Writing enhancer for the author's own draft (not a bypass tool)."""
+    text = (ctx["body"].get("text") or "").strip()
+    if not text:
+        raise ApiError(400, "Paste text to enhance")
+    mode = str(ctx["body"].get("mode") or "clarity").lower()
+    if mode not in humanize.MODES:
+        raise ApiError(400, f"Unknown mode — choose one of {', '.join(humanize.MODES)}")
+    words = len(text.split())
+    if words < 5:
+        raise ApiError(400, "Need at least 5 words to enhance")
+    if words > 30000:
+        raise ApiError(400, "Document too long (30,000 word max)")
+    use_lm = str(ctx["body"].get("useLmStudio", "1")) in ("1", "true", True)
+    try:
+        result = humanize.enhance(text, mode=mode, use_lmstudio=use_lm)
+    except ValueError as exc:
+        raise ApiError(400, str(exc))
+    return 200, {
+        "original": text,
+        "enhanced": result["enhanced"],
+        "edits": result["edits"],
+        "editCount": result["editCount"],
+        "provider": result["provider"],
+        "mode": result["mode"],
+        "stats": result["stats"],
+        "note": result["note"],
+    }
+
+
 ROUTES = [
     ("POST", r"^/api/scan$", h_scan),
     ("GET", r"^/api/scan/(?P<token>[A-Za-z0-9_-]+)$", h_status),
@@ -185,6 +216,7 @@ ROUTES = [
     ("POST", r"^/api/report/(?P<token>[A-Za-z0-9_-]+)/rescan$", h_rescan),
     ("GET", r"^/api/recent$", h_recent),
     ("GET", r"^/api/health$", h_health),
+    ("POST", r"^/api/humanize$", h_humanize),
 ]
 
 

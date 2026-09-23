@@ -63,6 +63,30 @@ function homeView() {
           (uncheck to keep it fully private; it will still be checked <i>against</i> the corpus either way).</label>
         <div class="error-box" id="scan-error"></div>
       </div>
+      <div class="card scanbox" id="enhancer-box" style="margin-top:16px">
+        <h3 style="margin:0 0 4px">Writing enhancer — clarify your own draft</h3>
+        <p class="meta" style="margin:0 0 10px">For text you wrote or have the right to edit.
+        Fixes stiff, repetitive phrasing and explains each change. <b>Not a bypass tool</b> —
+        AI-use disclosure and your institution's policies still apply.</p>
+        <textarea id="enh-text" rows="6" placeholder="Paste your draft here (5–30,000 words)…"></textarea>
+        <div class="scanrow">
+          <select id="enh-mode" style="border:1px solid var(--line);padding:10px;border-radius:8px;background:#fafbfe">
+            <option value="clarity">Clarity (default)</option>
+            <option value="concise">Concise</option>
+            <option value="natural">Natural voice</option>
+            <option value="formal">Formal tone</option>
+          </select>
+          <button class="btn secondary" onclick="doHumanize()">Enhance writing →</button>
+          <button class="btn secondary" onclick="copyEnhanced()" id="enh-copy" style="display:none">Copy result</button>
+        </div>
+        <div class="error-box" id="enh-error"></div>
+        <div id="enh-output" style="display:none;margin-top:10px">
+          <textarea id="enh-result" rows="6" readonly style="background:#f8fafc"></textarea>
+          <div class="srcmeta mt1" id="enh-meta"></div>
+          <div id="enh-edits" class="metric-row" style="margin-top:8px"></div>
+          <p class="srcmeta mt1" id="enh-note" style="color:var(--muted)"></p>
+        </div>
+      </div>
       <div class="how grid cols3">
         <div class="card"><h3>1 · Paste or upload</h3><p class="meta">Text or files (.txt, .md, .docx, .pdf). Nothing is required but the words themselves.</p></div>
         <div class="card"><h3>2 · We check it</h3><p class="meta">Against the shared corpus of past scans, the live web, and AI-writing patterns (perplexity, burstiness, style).</p></div>
@@ -114,6 +138,41 @@ async function doScan() {
     err.textContent = e.message;
     err.classList.add("show");
   }
+}
+
+async function doHumanize() {
+  const err = document.getElementById("enh-error");
+  const out = document.getElementById("enh-output");
+  err.classList.remove("show");
+  out.style.display = "none";
+  const text = document.getElementById("enh-text").value.trim();
+  const mode = document.getElementById("enh-mode").value;
+  if (!text) { err.textContent = "Paste your draft first"; err.classList.add("show"); return; }
+  err.textContent = "Enhancing…";
+  err.classList.add("show");
+  try {
+    const data = await API.post("/api/humanize", { text, mode });
+    document.getElementById("enh-result").value = data.enhanced;
+    document.getElementById("enh-meta").textContent =
+      `${data.editCount} suggestion${data.editCount === 1 ? "" : "s"} · ` +
+      `via ${data.provider === "lmstudio" ? "local LM Studio" : "offline rules"} · mode: ${data.mode}`;
+    document.getElementById("enh-edits").innerHTML =
+      (data.edits || []).slice(0, 12).map(e =>
+        `<span class="metric-chip"><b>${esc(e.type)}</b> ${esc(e.original)} → ${esc(e.suggestion)}</span>`
+      ).join("") || '<span class="muted">No changes needed — already reads naturally.</span>';
+    document.getElementById("enh-note").textContent = data.note || "";
+    out.style.display = "block";
+    document.getElementById("enh-copy").style.display = "";
+    err.classList.remove("show");
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.add("show");
+  }
+}
+
+function copyEnhanced() {
+  const v = document.getElementById("enh-result").value;
+  if (v) navigator.clipboard.writeText(v);
 }
 
 // ---------------------------------------------------------------- report
